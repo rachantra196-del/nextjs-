@@ -1,20 +1,29 @@
 import crypto from "crypto";
 
 function createSign(params, secret) {
-  delete params.sign;
+  const filtered = {};
 
-  const sortedKeys = Object.keys(params).sort();
+  Object.keys(params).forEach(key => {
+    if (params[key] !== undefined && params[key] !== "" && key !== "sign") {
+      filtered[key] = params[key];
+    }
+  });
 
-  const string = sortedKeys
-    .map(key => `${key}=${params[key]}`)
+  const string = Object.keys(filtered)
+    .sort()
+    .map(key => `${key}=${filtered[key]}`)
     .join("&");
 
-  return crypto.createHash("md5").update(string + secret).digest("hex");
+  return crypto
+    .createHash("md5")
+    .update(string + secret)
+    .digest("hex")
+    .toUpperCase();
 }
 
 export async function POST() {
   try {
-    // STEP 1: TOKEN
+    // STEP 1: GET TOKEN
     const tokenRes = await fetch(process.env.KESSPAY_BASE_URL + "/oauth/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -29,10 +38,8 @@ export async function POST() {
 
     const token = await tokenRes.json();
 
-    // STEP 2: BODY
+    // STEP 2: REQUEST BODY (IMPORTANT ORDER)
     const body = {
-      service: "webpay.acquire.createorder",
-      sign_type: "MD5",
       seller_code: "CU2510-101504183252854717",
       out_trade_no: Math.random().toString(36).substring(2, 10),
       body: "Testing Payment",
@@ -42,10 +49,15 @@ export async function POST() {
       expires_in: 6000
     };
 
-    // STEP 3: SIGN
-    body.sign = createSign({ ...body }, process.env.KESSPAY_CLIENT_SECRET);
+    // STEP 3: SIGN FIRST
+    const sign = createSign(body, process.env.KESSPAY_CLIENT_SECRET);
 
-    // STEP 4: CALL API
+    // STEP 4: ADD REQUIRED FIELDS AFTER SIGN
+    body.sign = sign;
+    body.service = "webpay.acquire.createorder";
+    body.sign_type = "MD5";
+
+    // STEP 5: CALL API
     const qrRes = await fetch(process.env.KESSPAY_BASE_URL + "/api/mch/v2/gateway", {
       method: "POST",
       headers: {
