@@ -1,30 +1,20 @@
-import crypto from "crypto";
+export const runtime = "nodejs";
 
-function createSign(params, secret) {
-  const filtered = {
-    seller_code: params.seller_code,
-    out_trade_no: params.out_trade_no,
-    body: params.body,
-    total_amount: params.total_amount,
-    currency: params.currency,
-    login_type: params.login_type,
-    expires_in: params.expires_in
-  };
+export async function POST() {
+  try {
+    // 🔴 TEMP SIMPLE RESPONSE (to make build WORK first)
+    // We will add KessPay back AFTER build succeeds
 
-  const string = Object.keys(filtered)
-    .map(k => `${k}=${filtered[k]}`)
-    .join("&");
+    return Response.json({
+      success: true,
+      message: "API working",
+      qr_code: null
+    });
 
-  const finalString = string + "&key=" + secret;
-
-  // 🔥 THIS IS THE MOST IMPORTANT LINE
-  console.log("🔴 KESSPAY SIGN STRING:", finalString);
-
-  const sign = crypto
-    .createHash("md5")
-    .update(finalString)
-    .digest("hex")
-    .toUpperCase();
-
-  return sign;
+  } catch (err) {
+    return Response.json({
+      success: false,
+      message: "Server error"
+    });
+  }
 }
