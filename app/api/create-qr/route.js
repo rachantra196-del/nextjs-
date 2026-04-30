@@ -1,23 +1,32 @@
 import crypto from "crypto";
 
 function createSign(params, secret) {
-  // ONLY include required fields (NO service, NO sign)
-  const string =
-    `seller_code=${params.seller_code}&` +
-    `out_trade_no=${params.out_trade_no}&` +
-    `body=${params.body}&` +
-    `total_amount=${params.total_amount}&` +
-    `currency=${params.currency}&` +
-    `login_type=${params.login_type}&` +
-    `expires_in=${params.expires_in}` +
-    `&key=${secret}`;
+  const filtered = {
+    seller_code: params.seller_code,
+    out_trade_no: params.out_trade_no,
+    body: params.body,
+    total_amount: params.total_amount,
+    currency: params.currency,
+    login_type: params.login_type,
+    expires_in: params.expires_in
+  };
 
-  return crypto.createHash("md5").update(string).digest("hex").toUpperCase();
+  const string = Object.keys(filtered)
+    .map(k => `${k}=${filtered[k]}`)
+    .join("&");
+
+  const sign = crypto
+    .createHash("md5")
+    .update(string + "&key=" + secret)
+    .digest("hex")
+    .toUpperCase();
+
+  return sign;
 }
 
 export async function POST() {
   try {
-    // STEP 1: GET TOKEN
+    // TOKEN
     const tokenRes = await fetch(process.env.KESSPAY_BASE_URL + "/oauth/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -32,7 +41,7 @@ export async function POST() {
 
     const token = await tokenRes.json();
 
-    // STEP 2: PAYMENT BODY
+    // BODY
     const body = {
       seller_code: "CU2510-101504183252854717",
       out_trade_no: Math.random().toString(36).substring(2, 10),
@@ -43,14 +52,13 @@ export async function POST() {
       expires_in: 6000
     };
 
-    // STEP 3: SIGN
+    // SIGN
     body.sign = createSign(body, process.env.KESSPAY_CLIENT_SECRET);
 
-    // REQUIRED FIELDS (after signing)
     body.sign_type = "MD5";
     body.service = "webpay.acquire.createorder";
 
-    // STEP 4: CALL API
+    // REQUEST
     const qrRes = await fetch(process.env.KESSPAY_BASE_URL + "/api/mch/v2/gateway", {
       method: "POST",
       headers: {
@@ -62,12 +70,20 @@ export async function POST() {
 
     const data = await qrRes.json();
 
+    // SAFE RESPONSE (NO RAW ERROR)
+    if (!data || data.success === false) {
+      return Response.json({
+        success: false,
+        message: "Unable to create payment"
+      });
+    }
+
     return Response.json(data);
 
   } catch (err) {
-    return Response.json(
-      { error: err.message },
-      { status: 500 }
-    );
+    return Response.json({
+      success: false,
+      message: "Service temporarily unavailable"
+    });
   }
 }
