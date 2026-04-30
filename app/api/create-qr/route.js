@@ -6,15 +6,16 @@ const GATEWAY_URL = "https://devwebpayment.kesspay.io/api/mch/v2/gateway";
 const CLIENT_SECRET = "iVK[rHVjUf-yrO-gl:WRdlv2N-)ZO!xrX!W9_=@t]6LZDx|95%dA,jI";
 const SELLER_CODE = "CU2510-101504183252854717";
 
-/* ================= SIGN (FIXED PROPERLY) ================= */
-function createSign(params) {
-  // STEP 1: sort keys alphabetically (IMPORTANT FOR KESSPAY)
-  const sortedKeys = Object.keys(params).sort();
-
-  // STEP 2: build query string
-  const string = sortedKeys
-    .map((key) => `${key}=${params[key]}`)
-    .join("&") + `&key=${CLIENT_SECRET}`;
+/* ================= STRICT SIGN (FINAL FIX) ================= */
+function createSign(data) {
+  const string =
+    "body=" + data.body +
+    "&currency=" + data.currency +
+    "&login_type=" + data.login_type +
+    "&out_trade_no=" + data.out_trade_no +
+    "&seller_code=" + data.seller_code +
+    "&total_amount=" + data.total_amount +
+    "&key=" + CLIENT_SECRET;
 
   return crypto.createHash("md5").update(string).digest("hex").toUpperCase();
 }
@@ -34,7 +35,6 @@ export async function POST(req) {
       total_amount: input.total_amount || 10
     };
 
-    // SIGN AFTER SORTING
     const sign = createSign(payload);
 
     const finalPayload = {
