@@ -3,7 +3,6 @@ export const runtime = "nodejs";
 import crypto from "crypto";
 
 function createSign(params, secret) {
-  // ⚠️ IMPORTANT: MUST be strict order (very common requirement in payment APIs)
   const string =
     `body=${params.body}&` +
     `currency=${params.currency}&` +
@@ -14,8 +13,6 @@ function createSign(params, secret) {
     `total_amount=${params.total_amount}` +
     secret;
 
-  console.log("🔴 SIGN STRING:", string);
-
   return crypto
     .createHash("md5")
     .update(string)
@@ -25,7 +22,7 @@ function createSign(params, secret) {
 
 export async function POST() {
   try {
-    // 1. TOKEN
+    // TOKEN
     const tokenRes = await fetch(process.env.KESSPAY_BASE_URL + "/oauth/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -42,24 +39,20 @@ export async function POST() {
 
     if (!token.access_token) {
       return Response.json({
-        success: false,
-        message: "Token failed",
-        debug: token
+        success: false
       });
     }
 
-    // 2. ORDER DATA
     const order = {
       seller_code: "CU2510-101504183252854717",
       out_trade_no: Date.now().toString(),
-      body: "Testing Payment",
+      body: "Payment",
       total_amount: "10",
       currency: "USD",
       login_type: "ANONYMOUS",
       expires_in: "6000"
     };
 
-    // 3. SIGN
     const sign = createSign(order, process.env.KESSPAY_CLIENT_SECRET);
 
     const payload = {
@@ -69,9 +62,6 @@ export async function POST() {
       service: "webpay.acquire.createorder"
     };
 
-    console.log("🔵 FINAL PAYLOAD:", payload);
-
-    // 4. CALL KESSPAY
     const res = await fetch(process.env.KESSPAY_BASE_URL + "/api/mch/v2/gateway", {
       method: "POST",
       headers: {
@@ -83,18 +73,21 @@ export async function POST() {
 
     const data = await res.json();
 
-    // 5. RETURN FULL DEBUG
+    // ONLY RETURN CLEAN RESULT
+    if (data && data.success) {
+      return Response.json({
+        success: true,
+        qr_code: data.qr_code || null
+      });
+    }
+
     return Response.json({
-      success: data.success || false,
-      kesspay_response: data,
-      sent_payload: payload
+      success: false
     });
 
   } catch (err) {
     return Response.json({
-      success: false,
-      message: "Server error",
-      error: err.message
+      success: false
     });
   }
 }
