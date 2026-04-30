@@ -7,22 +7,27 @@ export default function Home() {
 
   const createQR = async () => {
     setLoading(true);
+    setQr(null);
 
-    const res = await fetch("/api/create-qr", {
-      method: "POST"
-    });
+    try {
+      const res = await fetch("/api/create-qr", {
+        method: "POST"
+      });
 
-    const data = await res.json();
+      const data = await res.json();
+
+      if (!data.success) {
+        setQr({ error: data.message || "Payment failed" });
+      } else {
+        setQr(data);
+      }
+
+    } catch (err) {
+      setQr({ error: "Network error" });
+    }
+
     setLoading(false);
-
-    setQr(data);
   };
-
-  // extract QR safely
-  const qrCode =
-    qr?.qr_code ||
-    qr?.data?.qr_code ||
-    qr?.qr?.qr_code;
 
   return (
     <div style={{ padding: 40 }}>
@@ -32,22 +37,17 @@ export default function Home() {
         {loading ? "Loading..." : "Create QR Payment"}
       </button>
 
-      {/* SHOW ERROR */}
-      {qr?.success === false && (
-        <pre style={{ color: "red" }}>
-          {JSON.stringify(qr, null, 2)}
-        </pre>
+      {/* ERROR */}
+      {qr?.error && (
+        <p style={{ color: "red" }}>
+          {qr.error}
+        </p>
       )}
 
-      {/* SHOW QR */}
-      {qrCode && (
+      {/* QR IMAGE */}
+      {qr?.qr_code && (
         <div style={{ marginTop: 20 }}>
-          <h3>QR Code:</h3>
-          <img
-            src={qrCode}
-            alt="QR"
-            style={{ width: 200, height: 200 }}
-          />
+          <img src={qr.qr_code} width={200} />
         </div>
       )}
     </div>
