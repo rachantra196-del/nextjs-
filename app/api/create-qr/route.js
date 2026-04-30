@@ -1,16 +1,17 @@
 import crypto from "crypto";
 
 function createSign(params, secret) {
+  const ignore = ["sign", "sign_type", "service"];
+
   const filtered = {};
 
   Object.keys(params).forEach(key => {
-    if (params[key] !== undefined && params[key] !== "" && key !== "sign") {
+    if (!ignore.includes(key) && params[key] !== undefined && params[key] !== "") {
       filtered[key] = params[key];
     }
   });
 
   const string = Object.keys(filtered)
-    .sort()
     .map(key => `${key}=${filtered[key]}`)
     .join("&");
 
@@ -23,7 +24,7 @@ function createSign(params, secret) {
 
 export async function POST() {
   try {
-    // STEP 1: GET TOKEN
+    // GET TOKEN
     const tokenRes = await fetch(process.env.KESSPAY_BASE_URL + "/oauth/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -38,7 +39,7 @@ export async function POST() {
 
     const token = await tokenRes.json();
 
-    // STEP 2: REQUEST BODY (IMPORTANT ORDER)
+    // REQUEST BODY
     const body = {
       seller_code: "CU2510-101504183252854717",
       out_trade_no: Math.random().toString(36).substring(2, 10),
@@ -49,15 +50,15 @@ export async function POST() {
       expires_in: 6000
     };
 
-    // STEP 3: SIGN FIRST
+    // SIGN FIRST
     const sign = createSign(body, process.env.KESSPAY_CLIENT_SECRET);
 
-    // STEP 4: ADD REQUIRED FIELDS AFTER SIGN
+    // ADD REQUIRED FIELDS
     body.sign = sign;
-    body.service = "webpay.acquire.createorder";
     body.sign_type = "MD5";
+    body.service = "webpay.acquire.createorder";
 
-    // STEP 5: CALL API
+    // CALL API
     const qrRes = await fetch(process.env.KESSPAY_BASE_URL + "/api/mch/v2/gateway", {
       method: "POST",
       headers: {
@@ -72,8 +73,6 @@ export async function POST() {
     return Response.json(data);
 
   } catch (err) {
-    return Response.json({
-      error: err.message
-    }, { status: 500 });
+    return Response.json({ error: err.message }, { status: 500 });
   }
 }
