@@ -3,29 +3,54 @@
 import { useState } from "react";
 
 export default function Home() {
-  const [msg, setMsg] = useState("");
+  const [qr, setQr] = useState(null);
+  const [status, setStatus] = useState("");
 
   const createQR = async () => {
-    try {
-      const res = await fetch("/api/create-qr", {
-        method: "POST"
-      });
+    const res = await fetch("/api/create-qr", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ total_amount: 10 })
+    });
 
-      const data = await res.json();
-      console.log(data);
+    const data = await res.json();
 
-      setMsg(data.message || "done");
-    } catch (e) {
-      setMsg("network error");
-      console.log(e);
-    }
+    console.log(data);
+
+    setQr(data.kesspay);
+  };
+
+  const checkStatus = async (orderId) => {
+    const res = await fetch("/api/query-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ out_trade_no: orderId })
+    });
+
+    const data = await res.json();
+    setStatus(JSON.stringify(data));
   };
 
   return (
     <div style={{ padding: 40 }}>
       <h1>KessPay Demo</h1>
-      <button onClick={createQR}>Create QR Payment</button>
-      <p>{msg}</p>
+
+      <button onClick={createQR}>Create QR</button>
+
+      {qr && (
+        <pre style={{ marginTop: 20 }}>
+          {JSON.stringify(qr, null, 2)}
+        </pre>
+      )}
+
+      <button
+        onClick={() => checkStatus(qr?.out_trade_no)}
+        style={{ marginTop: 20 }}
+      >
+        Check Status
+      </button>
+
+      <p>{status}</p>
     </div>
   );
 }
