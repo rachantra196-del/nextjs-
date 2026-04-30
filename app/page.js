@@ -1,3 +1,1 @@
-const res = await fetch("/api/create-qr", {
-  method: "POST"
-});
+await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/create-qr`)
