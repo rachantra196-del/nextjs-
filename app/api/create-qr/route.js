@@ -1,15 +1,15 @@
 import crypto from "crypto";
 
 function createSign(params, secret) {
+  delete params.sign;
+
   const sortedKeys = Object.keys(params).sort();
 
-  let string = sortedKeys
-    .map(key => key + "=" + params[key])
+  const string = sortedKeys
+    .map(key => `${key}=${params[key]}`)
     .join("&");
 
-  string += secret;
-
-  return crypto.createHash("md5").update(string).digest("hex");
+  return crypto.createHash("md5").update(string + secret).digest("hex");
 }
 
 export async function POST() {
@@ -29,7 +29,7 @@ export async function POST() {
 
     const token = await tokenRes.json();
 
-    // STEP 2: REQUEST BODY
+    // STEP 2: BODY
     const body = {
       service: "webpay.acquire.createorder",
       sign_type: "MD5",
@@ -43,7 +43,7 @@ export async function POST() {
     };
 
     // STEP 3: SIGN
-    body.sign = createSign(body, process.env.KESSPAY_CLIENT_SECRET);
+    body.sign = createSign({ ...body }, process.env.KESSPAY_CLIENT_SECRET);
 
     // STEP 4: CALL API
     const qrRes = await fetch(process.env.KESSPAY_BASE_URL + "/api/mch/v2/gateway", {
