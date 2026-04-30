@@ -11,22 +11,19 @@ export default function Home() {
 
     try {
       const res = await fetch("/api/create-qr", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        }
+        method: "POST"
       });
 
       const data = await res.json();
 
-      if (!data.success) {
-        setQr({ error: data.message });
+      if (data.success && data.qr_code) {
+        setQr(data.qr_code);
       } else {
-        setQr(data);
+        setQr(null);
       }
 
     } catch (err) {
-      setQr({ error: "Network error" });
+      setQr(null);
     }
 
     setLoading(false);
@@ -40,16 +37,11 @@ export default function Home() {
         {loading ? "Loading..." : "Create QR Payment"}
       </button>
 
-      {qr?.error && (
-        <p style={{ color: "red" }}>{qr.error}</p>
-      )}
-
-      {qr?.qr_code && (
-        <img src={qr.qr_code} width={200} />
-      )}
-
-      {qr?.message && (
-        <p>{qr.message}</p>
+      {/* ONLY SHOW QR (NO ERRORS) */}
+      {qr && (
+        <div style={{ marginTop: 20 }}>
+          <img src={qr} width={200} />
+        </div>
       )}
     </div>
   );
