@@ -18,7 +18,7 @@ function createSign(out_trade_no) {
 /* ================= API ================= */
 export async function POST(req) {
   try {
-    const { out_trade_no, token } = await req.json();
+    const { out_trade_no } = await req.json();
 
     const payload = {
       service: "webpay.acquire.queryOrder",
@@ -27,11 +27,11 @@ export async function POST(req) {
       sign: createSign(out_trade_no)
     };
 
+    // ❗ NO AUTH HEADER (IMPORTANT FIX)
     const res = await fetch(GATEWAY_URL, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify(payload)
     });
