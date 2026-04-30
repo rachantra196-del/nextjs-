@@ -2,28 +2,23 @@ export const runtime = "nodejs";
 
 import crypto from "crypto";
 
-/* ================= CONFIG ================= */
 const GATEWAY_URL = "https://devwebpayment.kesspay.io/api/mch/v2/gateway";
-
 const CLIENT_SECRET = "iVK[rHVjUf-yrO-gl:WRdlv2N-)ZO!xrX!W9_=@t]6LZDx|95%dA,jI";
-
 const SELLER_CODE = "CU2510-101504183252854717";
 
-/* ================= SIGN FUNCTION ================= */
-function createSign(data) {
-  const raw =
-    `body=${data.body}` +
-    `&currency=${data.currency}` +
-    `&login_type=${data.login_type}` +
-    `&out_trade_no=${data.out_trade_no}` +
-    `&seller_code=${data.seller_code}` +
-    `&total_amount=${data.total_amount}` +
-    `&key=${CLIENT_SECRET}`;
+/* ================= SIGN (FIXED PROPERLY) ================= */
+function createSign(params) {
+  // STEP 1: sort keys alphabetically (IMPORTANT FOR KESSPAY)
+  const sortedKeys = Object.keys(params).sort();
 
-  return crypto.createHash("md5").update(raw).digest("hex").toUpperCase();
+  // STEP 2: build query string
+  const string = sortedKeys
+    .map((key) => `${key}=${params[key]}`)
+    .join("&") + `&key=${CLIENT_SECRET}`;
+
+  return crypto.createHash("md5").update(string).digest("hex").toUpperCase();
 }
 
-/* ================= API ================= */
 export async function POST(req) {
   try {
     const input = await req.json();
@@ -31,26 +26,30 @@ export async function POST(req) {
     const out_trade_no = "ORDER_" + Date.now();
 
     const payload = {
-      service: "webpay.acquire.createorder",
-      sign_type: "MD5",
-      seller_code: SELLER_CODE,
-      out_trade_no,
       body: "KessPay Payment",
-      total_amount: input.total_amount || 10,
       currency: "USD",
       login_type: "ANONYMOUS",
-      expires_in: 6000
+      out_trade_no,
+      seller_code: SELLER_CODE,
+      total_amount: input.total_amount || 10
     };
 
-    payload.sign = createSign(payload);
+    // SIGN AFTER SORTING
+    const sign = createSign(payload);
 
-    // ❗ NO AUTH HEADER (IMPORTANT FIX)
+    const finalPayload = {
+      service: "webpay.acquire.createorder",
+      sign_type: "MD5",
+      ...payload,
+      sign
+    };
+
     const res = await fetch(GATEWAY_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(finalPayload)
     });
 
     const data = await res.json();
