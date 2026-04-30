@@ -3,21 +3,22 @@ export const runtime = "nodejs";
 import crypto from "crypto";
 
 const GATEWAY_URL = "https://devwebpayment.kesspay.io/api/mch/v2/gateway";
+
 const CLIENT_SECRET = "iVK[rHVjUf-yrO-gl:WRdlv2N-)ZO!xrX!W9_=@t]6LZDx|95%dA,jI";
 const SELLER_CODE = "CU2510-101504183252854717";
 
-/* ================= STRICT SIGN (FINAL FIX) ================= */
-function createSign(data) {
-  const string =
-    "body=" + data.body +
-    "&currency=" + data.currency +
-    "&login_type=" + data.login_type +
-    "&out_trade_no=" + data.out_trade_no +
-    "&seller_code=" + data.seller_code +
-    "&total_amount=" + data.total_amount +
+/* ================= SIGN (STRICT ORDER ONLY) ================= */
+function sign(payload) {
+  const raw =
+    "body=" + payload.body +
+    "&currency=" + payload.currency +
+    "&login_type=" + payload.login_type +
+    "&out_trade_no=" + payload.out_trade_no +
+    "&seller_code=" + payload.seller_code +
+    "&total_amount=" + payload.total_amount +
     "&key=" + CLIENT_SECRET;
 
-  return crypto.createHash("md5").update(string).digest("hex").toUpperCase();
+  return crypto.createHash("md5").update(raw).digest("hex").toUpperCase();
 }
 
 export async function POST(req) {
@@ -35,13 +36,11 @@ export async function POST(req) {
       total_amount: input.total_amount || 10
     };
 
-    const sign = createSign(payload);
-
     const finalPayload = {
       service: "webpay.acquire.createorder",
       sign_type: "MD5",
       ...payload,
-      sign
+      sign: sign(payload)
     };
 
     const res = await fetch(GATEWAY_URL, {
