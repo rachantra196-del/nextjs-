@@ -1,8 +1,5 @@
 const nextConfig = {
-  reactStrictMode: true,
-  experimental: {
-    serverComponentsExternalPackages: ["crypto"]
-  }
+  reactStrictMode: true
 };
 
 module.exports = nextConfig;
