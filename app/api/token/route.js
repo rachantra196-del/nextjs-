@@ -1,16 +1,56 @@
-export async function POST() {
-  const res = await fetch(process.env.KESSPAY_BASE_URL + "/oauth/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      grant_type: "password",
-      client_id: process.env.KESSPAY_CLIENT_ID,
-      client_secret: process.env.KESSPAY_CLIENT_SECRET,
-      username: process.env.KESSPAY_USERNAME,
-      password: process.env.KESSPAY_PASSWORD
-    })
-  });
+"use client";
+import { useState } from "react";
 
-  const data = await res.json();
-  return Response.json(data);
+export default function Home() {
+  const [qr, setQr] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const createQR = async () => {
+    setLoading(true);
+    setQr(null);
+
+    try {
+      const res = await fetch("/api/create-qr", {
+        method: "POST", // 🔥 MUST BE POST (fixes 405 error)
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        setQr({ error: data.message || "Payment failed" });
+      } else {
+        setQr(data);
+      }
+
+    } catch (err) {
+      setQr({ error: "Network error" });
+    }
+
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ padding: 40 }}>
+      <h1>KessPay Demo</h1>
+
+      <button onClick={createQR} disabled={loading}>
+        {loading ? "Loading..." : "Create QR Payment"}
+      </button>
+
+      {/* ERROR */}
+      {qr?.error && (
+        <p style={{ color: "red" }}>{qr.error}</p>
+      )}
+
+      {/* QR IMAGE */}
+      {qr?.qr_code && (
+        <div style={{ marginTop: 20 }}>
+          <img src={qr.qr_code} width={200} />
+        </div>
+      )}
+    </div>
+  );
 }
