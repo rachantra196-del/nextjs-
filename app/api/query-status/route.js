@@ -5,17 +5,21 @@ import crypto from "crypto";
 const GATEWAY_URL = "https://devwebpayment.kesspay.io/api/mch/v2/gateway";
 const CLIENT_SECRET = "iVK[rHVjUf-yrO-gl:WRdlv2N-)ZO!xrX!W9_=@t]6LZDx|95%dA,jI";
 
-/* ================= SIGN ================= */
 function createSign(out_trade_no) {
-  const raw =
-    `out_trade_no=${out_trade_no}` +
-    `&service=webpay.acquire.queryOrder` +
-    `&key=${CLIENT_SECRET}`;
+  const params = {
+    out_trade_no,
+    service: "webpay.acquire.queryOrder"
+  };
 
-  return crypto.createHash("md5").update(raw).digest("hex").toUpperCase();
+  const string =
+    Object.keys(params)
+      .sort()
+      .map((k) => `${k}=${params[k]}`)
+      .join("&") + `&key=${CLIENT_SECRET}`;
+
+  return crypto.createHash("md5").update(string).digest("hex").toUpperCase();
 }
 
-/* ================= API ================= */
 export async function POST(req) {
   try {
     const { out_trade_no } = await req.json();
@@ -27,7 +31,6 @@ export async function POST(req) {
       sign: createSign(out_trade_no)
     };
 
-    // ❗ NO AUTH HEADER (IMPORTANT FIX)
     const res = await fetch(GATEWAY_URL, {
       method: "POST",
       headers: {
