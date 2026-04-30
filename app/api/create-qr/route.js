@@ -3,30 +3,29 @@ export const runtime = "nodejs";
 import crypto from "crypto";
 
 function createSign(params, secret) {
-  const ordered = [
-    `seller_code=${params.seller_code}`,
-    `out_trade_no=${params.out_trade_no}`,
-    `body=${params.body}`,
-    `total_amount=${params.total_amount}`,
-    `currency=${params.currency}`,
-    `login_type=${params.login_type}`,
-    `expires_in=${params.expires_in}`
-  ].join("&");
+  // ⚠️ IMPORTANT: MUST be strict order (very common requirement in payment APIs)
+  const string =
+    `body=${params.body}&` +
+    `currency=${params.currency}&` +
+    `expires_in=${params.expires_in}&` +
+    `login_type=${params.login_type}&` +
+    `out_trade_no=${params.out_trade_no}&` +
+    `seller_code=${params.seller_code}&` +
+    `total_amount=${params.total_amount}` +
+    secret;
 
-  const stringToSign = ordered + secret;
-
-  console.log("SIGN STRING:", stringToSign);
+  console.log("🔴 SIGN STRING:", string);
 
   return crypto
     .createHash("md5")
-    .update(stringToSign)
+    .update(string)
     .digest("hex")
     .toUpperCase();
 }
 
 export async function POST() {
   try {
-    // TOKEN
+    // 1. TOKEN
     const tokenRes = await fetch(process.env.KESSPAY_BASE_URL + "/oauth/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -49,30 +48,31 @@ export async function POST() {
       });
     }
 
-    // ORDER
-    const body = {
+    // 2. ORDER DATA
+    const order = {
       seller_code: "CU2510-101504183252854717",
       out_trade_no: Date.now().toString(),
       body: "Testing Payment",
-      total_amount: 10,
+      total_amount: "10",
       currency: "USD",
       login_type: "ANONYMOUS",
-      expires_in: 6000
+      expires_in: "6000"
     };
 
-    // SIGN
-    const sign = createSign(body, process.env.KESSPAY_CLIENT_SECRET);
+    // 3. SIGN
+    const sign = createSign(order, process.env.KESSPAY_CLIENT_SECRET);
 
     const payload = {
-      ...body,
+      ...order,
       sign,
       sign_type: "MD5",
       service: "webpay.acquire.createorder"
     };
 
-    console.log("FINAL PAYLOAD:", payload);
+    console.log("🔵 FINAL PAYLOAD:", payload);
 
-    const qrRes = await fetch(process.env.KESSPAY_BASE_URL + "/api/mch/v2/gateway", {
+    // 4. CALL KESSPAY
+    const res = await fetch(process.env.KESSPAY_BASE_URL + "/api/mch/v2/gateway", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -81,13 +81,13 @@ export async function POST() {
       body: JSON.stringify(payload)
     });
 
-    const data = await qrRes.json();
+    const data = await res.json();
 
-    // RETURN FULL DEBUG (IMPORTANT)
+    // 5. RETURN FULL DEBUG
     return Response.json({
       success: data.success || false,
-      response: data,
-      sent: payload
+      kesspay_response: data,
+      sent_payload: payload
     });
 
   } catch (err) {
