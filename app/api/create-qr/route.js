@@ -1,30 +1,23 @@
 import crypto from "crypto";
 
 function createSign(params, secret) {
-  const ignore = ["sign", "sign_type", "service"];
+  // ONLY include required fields (NO service, NO sign)
+  const string =
+    `seller_code=${params.seller_code}&` +
+    `out_trade_no=${params.out_trade_no}&` +
+    `body=${params.body}&` +
+    `total_amount=${params.total_amount}&` +
+    `currency=${params.currency}&` +
+    `login_type=${params.login_type}&` +
+    `expires_in=${params.expires_in}` +
+    `&key=${secret}`;
 
-  const filtered = {};
-
-  Object.keys(params).forEach(key => {
-    if (!ignore.includes(key) && params[key] !== undefined && params[key] !== "") {
-      filtered[key] = params[key];
-    }
-  });
-
-  const string = Object.keys(filtered)
-    .map(key => `${key}=${filtered[key]}`)
-    .join("&");
-
-  return crypto
-    .createHash("md5")
-    .update(string + secret)
-    .digest("hex")
-    .toUpperCase();
+  return crypto.createHash("md5").update(string).digest("hex").toUpperCase();
 }
 
 export async function POST() {
   try {
-    // GET TOKEN
+    // STEP 1: GET TOKEN
     const tokenRes = await fetch(process.env.KESSPAY_BASE_URL + "/oauth/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -39,7 +32,7 @@ export async function POST() {
 
     const token = await tokenRes.json();
 
-    // REQUEST BODY
+    // STEP 2: PAYMENT BODY
     const body = {
       seller_code: "CU2510-101504183252854717",
       out_trade_no: Math.random().toString(36).substring(2, 10),
@@ -50,15 +43,14 @@ export async function POST() {
       expires_in: 6000
     };
 
-    // SIGN FIRST
-    const sign = createSign(body, process.env.KESSPAY_CLIENT_SECRET);
+    // STEP 3: SIGN
+    body.sign = createSign(body, process.env.KESSPAY_CLIENT_SECRET);
 
-    // ADD REQUIRED FIELDS
-    body.sign = sign;
+    // REQUIRED FIELDS (after signing)
     body.sign_type = "MD5";
     body.service = "webpay.acquire.createorder";
 
-    // CALL API
+    // STEP 4: CALL API
     const qrRes = await fetch(process.env.KESSPAY_BASE_URL + "/api/mch/v2/gateway", {
       method: "POST",
       headers: {
@@ -73,6 +65,9 @@ export async function POST() {
     return Response.json(data);
 
   } catch (err) {
-    return Response.json({ error: err.message }, { status: 500 });
+    return Response.json(
+      { error: err.message },
+      { status: 500 }
+    );
   }
 }
