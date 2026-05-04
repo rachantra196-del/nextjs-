@@ -1,1 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple Racing Game</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #222; }
+    canvas { display: block; margin: auto; background: #555; }
+  </style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
 
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = 400;
+canvas.height = 600;
+
+let car = { x: 180, y: 500, w: 40, h: 60 };
+let obstacles = [];
+
+function drawCar() {
+  ctx.fillStyle = "red";
+  ctx.fillRect(car.x, car.y, car.w, car.h);
+}
+
+function drawObstacles() {
+  ctx.fillStyle = "white";
+  obstacles.forEach(o => {
+    ctx.fillRect(o.x, o.y, o.w, o.h);
+    o.y += 4;
+  });
+}
+
+function spawnObstacle() {
+  let x = Math.random() * (canvas.width - 40);
+  obstacles.push({ x: x, y: -60, w: 40, h: 60 });
+}
+
+function detectCollision() {
+  for (let o of obstacles) {
+    if (
+      car.x < o.x + o.w &&
+      car.x + car.w > o.x &&
+      car.y < o.y + o.h &&
+      car.y + car.h > o.y
+    ) {
+      alert("Game Over!");
+      document.location.reload();
+    }
+  }
+}
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  drawCar();
+  drawObstacles();
+  detectCollision();
+
+  requestAnimationFrame(gameLoop);
+}
+
+setInterval(spawnObstacle, 1500);
+
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft" && car.x > 0) car.x -= 20;
+  if (e.key === "ArrowRight" && car.x < canvas.width - car.w) car.x += 20;
+});
+
+gameLoop();
+</script>
+</body>
+</html>
